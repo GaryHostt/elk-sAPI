@@ -1,299 +1,197 @@
 {
-	"info": {
-		"_postman_id": "elk-mcp-project-v2-collection",
-		"name": "ELK MCP Project v2",
-		"description": "Postman collection for the ELK MCP Project v2 - A Mule application providing HTTP flows for Elasticsearch search operations and ML anomaly detection.\n\nThis collection includes both OpenAPI-compliant endpoints and simplified tool endpoints for:\n- Elasticsearch search operations\n- ML anomaly detection results\n\nBase URL: http://localhost:8081",
-		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
-	},
-	"item": [
-		{
-			"name": "Search Operations",
-			"description": "Endpoints for searching Elasticsearch indices",
-			"item": [
-				{
-					"name": "Search Logs (OpenAPI)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 10,\n  \"from\": 0,\n  \"sort\": [\n    {\n      \"@timestamp\": {\n        \"order\": \"desc\"\n      }\n    }\n  ]\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/{{index}}/_search",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"{{index}}",
-								"_search"
-							]
-						},
-						"description": "OpenAPI-compliant endpoint that mirrors Elasticsearch search API.\n\n**URL Pattern:** `POST /{index}/_search`\n\n**Path Parameters:**\n- `index`: The Elasticsearch index name to search (defaults to 'my-index')\n\n**Request Body:** Standard Elasticsearch query DSL\n\n**Example Response:**\n```json\n{\n  \"took\": 5,\n  \"timed_out\": false,\n  \"_shards\": {...},\n  \"hits\": {...}\n}\n```"
-					},
-					"response": []
-				},
-				{
-					"name": "Search Logs (Tool)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"index\": \"my-index\",\n  \"query\": {\n    \"query\": {\n      \"match\": {\n        \"level\": \"ERROR\"\n      }\n    },\n    \"size\": 20,\n    \"sort\": [\n      {\n        \"@timestamp\": {\n          \"order\": \"desc\"\n        }\n      }\n    ]\n  }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/tools/searchLogs",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"tools",
-								"searchLogs"
-							]
-						},
-						"description": "Simplified tool endpoint for log searching.\n\n**URL:** `POST /tools/searchLogs`\n\n**Request Body Format:**\n```json\n{\n  \"index\": \"index-name\",\n  \"query\": { /* Elasticsearch query DSL */ }\n}\n```\n\n**Parameters:**\n- `index`: Target Elasticsearch index (optional, defaults to 'my-index')\n- `query`: Elasticsearch query object\n\nThis endpoint transforms the tool format and calls the main search flow internally."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Anomaly Detection",
-			"description": "Endpoints for ML anomaly detection results",
-			"item": [
-				{
-					"name": "Get Anomaly Results (OpenAPI)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"sort\": \"record_score\",\n  \"desc\": true,\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-12-31T23:59:59Z\",\n  \"anomaly_score_filter\": {\n    \"gte\": 75\n  }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/_ml/anomaly_detectors/{{job_id}}/_results",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"_ml",
-								"anomaly_detectors",
-								"{{job_id}}",
-								"_results"
-							]
-						},
-						"description": "OpenAPI-compliant endpoint that mirrors Elasticsearch ML API for anomaly detection results.\n\n**URL Pattern:** `POST /_ml/anomaly_detectors/{job_id}/_results`\n\n**Path Parameters:**\n- `job_id`: The ML anomaly detection job ID\n\n**Request Body Parameters:**\n- `sort`: Field to sort results by\n- `desc`: Sort order (true for descending)\n- `start`: Start time for results\n- `end`: End time for results  \n- `anomaly_score_filter`: Filter for anomaly scores\n\n**Example Response:**\n```json\n{\n  \"count\": 2,\n  \"results\": [...]\n}\n```"
-					},
-					"response": []
-				},
-				{
-					"name": "Get Anomaly Results (Tool)",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"job_id\": \"cpu-usage-anomaly-job\",\n  \"sort\": \"timestamp\",\n  \"desc\": true,\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-12-31T23:59:59Z\",\n  \"anomaly_score_filter\": {\n    \"gte\": 50\n  }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/tools/getAnomalyResults",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"tools",
-								"getAnomalyResults"
-							]
-						},
-						"description": "Simplified tool endpoint for getting anomaly detection results.\n\n**URL:** `POST /tools/getAnomalyResults`\n\n**Request Body Format:**\n```json\n{\n  \"job_id\": \"anomaly-job-name\",\n  \"sort\": \"field_name\",\n  \"desc\": true,\n  \"start\": \"start_time\",\n  \"end\": \"end_time\",\n  \"anomaly_score_filter\": { \"gte\": 50 }\n}\n```\n\n**Parameters:**\n- `job_id`: ML anomaly detection job identifier (required)\n- `sort`: Field to sort results by (optional)\n- `desc`: Sort in descending order (optional)\n- `start`: Start timestamp for filtering (optional)\n- `end`: End timestamp for filtering (optional)\n- `anomaly_score_filter`: Score threshold filter (optional)\n\nThis endpoint transforms the tool format and calls the main anomaly detection flow internally."
-					},
-					"response": []
-				}
-			]
-		},
-		{
-			"name": "Health Check Examples",
-			"description": "Example requests for testing basic connectivity",
-			"item": [
-				{
-					"name": "Basic Search Test",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 1\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/my-index/_search",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"my-index",
-								"_search"
-							]
-						},
-						"description": "Simple test request to verify the search endpoint is working.\nUses the default index 'my-index' with a match_all query limited to 1 result."
-					},
-					"response": []
-				},
-				{
-					"name": "Tool Search Test",
-					"request": {
-						"method": "POST",
-						"header": [
-							{
-								"key": "Content-Type",
-								"value": "application/json",
-								"type": "text"
-							}
-						],
-						"body": {
-							"mode": "raw",
-							"raw": "{\n  \"index\": \"my-index\",\n  \"query\": {\n    \"query\": {\n      \"match_all\": {}\n    },\n    \"size\": 1\n  }\n}",
-							"options": {
-								"raw": {
-									"language": "json"
-								}
-							}
-						},
-						"url": {
-							"raw": "{{baseUrl}}/tools/searchLogs",
-							"host": [
-								"{{baseUrl}}"
-							],
-							"path": [
-								"tools",
-								"searchLogs"
-							]
-						},
-						"description": "Simple test request to verify the tool search endpoint is working.\nUses the simplified tool format with default index and basic query."
-					},
-					"response": []
-				}
-			]
-		}
-	],
-	"event": [
-		{
-			"listen": "prerequest",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					"// Set default values if environment variables are not set",
-					"if (!pm.environment.get('baseUrl')) {",
-					"    pm.environment.set('baseUrl', 'http://localhost:8081');",
-					"}",
-					"",
-					"if (!pm.environment.get('index')) {",
-					"    pm.environment.set('index', 'my-index');",
-					"}",
-					"",
-					"if (!pm.environment.get('job_id')) {",
-					"    pm.environment.set('job_id', 'my-anomaly-job');",
-					"}",
-					"",
-					"// Log current configuration",
-					"console.log('Base URL: ' + pm.environment.get('baseUrl'));",
-					"console.log('Default Index: ' + pm.environment.get('index'));",
-					"console.log('Default Job ID: ' + pm.environment.get('job_id'));"
-				]
-			}
-		},
-		{
-			"listen": "test",
-			"script": {
-				"type": "text/javascript",
-				"exec": [
-					"// Global test script for all requests",
-					"pm.test('Response status should not be 500', function () {",
-					"    pm.response.to.not.have.status(500);",
-					"});",
-					"",
-					"pm.test('Response should have proper content type', function () {",
-					"    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
-					"});",
-					"",
-					"// Log response for debugging",
-					"if (pm.response.code >= 400) {",
-					"    console.log('Error Response Body:', pm.response.text());",
-					"}"
-				]
-			}
-		}
-	],
-	"variable": [
-		{
-			"key": "baseUrl",
-			"value": "http://localhost:8081",
-			"description": "Base URL for the ELK MCP Project API"
-		},
-		{
-			"key": "index",
-			"value": "my-index",
-			"description": "Default Elasticsearch index name"
-		},
-		{
-			"key": "job_id",
-			"value": "my-anomaly-job",
-			"description": "Default ML anomaly detection job ID"
-		}
-	]
+  "info": {
+    "_postman_id": "elk-mcp-project-v2-collection",
+    "name": "ELK MCP Project v2",
+    "description": "Postman collection for the ELK MCP Project v2. Targets the elk HTTP API (OpenAPI-style endpoints) for Elasticsearch search and ML anomaly detection. Use these endpoints to test the flows that back the API.\n\n- Search: POST /{index}/_search\n- Anomaly results: POST /_ml/anomaly_detectors/{job_id}/_results\n\nAgent access is via MCP tools (searchLogs, getAnomalyResults) which invoke the same backend elk flows.\n\nBase URL: http://localhost:8081",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Search Operations",
+      "description": "Endpoints for searching Elasticsearch indices",
+      "item": [
+        {
+          "name": "Search Logs (OpenAPI)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 10,\n  \"from\": 0,\n  \"sort\": [\n    {\n      \"@timestamp\": {\n        \"order\": \"desc\"\n      }\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/{{index}}/_search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "{{index}}",
+                "_search"
+              ]
+            },
+            "description": "OpenAPI-compliant endpoint that mirrors Elasticsearch search API.\n\n**URL Pattern:** `POST /{index}/_search`\n\n**Path Parameters:**\n- `index`: The Elasticsearch index name to search (defaults to 'my-index')\n\n**Request Body:** Standard Elasticsearch query DSL\n\n**Example Response:**\n```json\n{\n  \"took\": 5,\n  \"timed_out\": false,\n  \"_shards\": {...},\n  \"hits\": {...}\n}\n```"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Anomaly Detection",
+      "description": "Endpoints for ML anomaly detection results",
+      "item": [
+        {
+          "name": "Get Anomaly Results (OpenAPI)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sort\": \"record_score\",\n  \"desc\": true,\n  \"start\": \"2024-01-01T00:00:00Z\",\n  \"end\": \"2024-12-31T23:59:59Z\",\n  \"anomaly_score_filter\": {\n    \"gte\": 75\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/_ml/anomaly_detectors/{{job_id}}/_results",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "_ml",
+                "anomaly_detectors",
+                "{{job_id}}",
+                "_results"
+              ]
+            },
+            "description": "OpenAPI-compliant endpoint that mirrors Elasticsearch ML API for anomaly detection results.\n\n**URL Pattern:** `POST /_ml/anomaly_detectors/{job_id}/_results`\n\n**Path Parameters:**\n- `job_id`: The ML anomaly detection job ID\n\n**Request Body Parameters:**\n- `sort`: Field to sort results by\n- `desc`: Sort order (true for descending)\n- `start`: Start time for results\n- `end`: End time for results  \n- `anomaly_score_filter`: Filter for anomaly scores\n\n**Example Response:**\n```json\n{\n  \"count\": 2,\n  \"results\": [...]\n}\n```\n\n**Note:** This endpoint is also accessible via MCP tool `getAnomalyResults` for agent integration."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Health Check Examples",
+      "description": "Example requests for testing basic connectivity",
+      "item": [
+        {
+          "name": "Basic Search Test",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"query\": {\n    \"match_all\": {}\n  },\n  \"size\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/my-index/_search",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "my-index",
+                "_search"
+              ]
+            },
+            "description": "Simple test request to verify the OpenAPI search endpoint is working.\nUses the default index 'my-index' with a match_all query limited to 1 result.\n\n**Note:** Tool functionality now available via MCP `searchLogs` and `getAnomalyResults` tools for agent integration."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set default values if environment variables are not set",
+          "if (!pm.environment.get('baseUrl')) {",
+          "    pm.environment.set('baseUrl', 'http://localhost:8081');",
+          "}",
+          "",
+          "if (!pm.environment.get('index')) {",
+          "    pm.environment.set('index', 'my-index');",
+          "}",
+          "",
+          "if (!pm.environment.get('job_id')) {",
+          "    pm.environment.set('job_id', 'my-anomaly-job');",
+          "}",
+          "",
+          "// Log current configuration",
+          "console.log('Base URL: ' + pm.environment.get('baseUrl'));",
+          "console.log('Default Index: ' + pm.environment.get('index'));",
+          "console.log('Default Job ID: ' + pm.environment.get('job_id'));"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Global test script for all requests",
+          "pm.test('Response status should not be 500', function () {",
+          "    pm.response.to.not.have.status(500);",
+          "});",
+          "",
+          "pm.test('Response should have proper content type', function () {",
+          "    pm.expect(pm.response.headers.get('Content-Type')).to.include('application/json');",
+          "});",
+          "",
+          "// Log response for debugging",
+          "if (pm.response.code >= 400) {",
+          "    console.log('Error Response Body:', pm.response.text());",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "description": "Base URL for the ELK MCP Project API"
+    },
+    {
+      "key": "index",
+      "value": "my-index",
+      "description": "Default Elasticsearch index name"
+    },
+    {
+      "key": "job_id",
+      "value": "my-anomaly-job",
+      "description": "Default ML anomaly detection job ID"
+    }
+  ]
 }

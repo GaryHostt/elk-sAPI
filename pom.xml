@@ -12,7 +12,7 @@
         <mule.maven.plugin.version>4.7.0</mule.maven.plugin.version>
         <mule.version>4.7.0</mule.version>
         <http.connector.version>1.9.3</http.connector.version>
-    </properties>
+    <app.runtime>4.10.3</app.runtime></properties>
     <dependencies>
         <!-- Mule HTTP Connector -->
         <dependency>

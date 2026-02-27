@@ -4,29 +4,25 @@ This Mule application provides HTTP flows based on the OpenAPI specification for
 
 ## Project Structure
 
-### Main HTTP Flows
-- **elk-search-logs-http-flow**: Implements `POST /{index}/_search` endpoint
-- **elk-anomaly-results-http-flow**: Implements `POST /_ml/anomaly_detectors/{job_id}/_results` endpoint
+### Elk HTTP Flows (OpenAPI)
+- **elk-search-logs-http-flow**: Implements `POST /{index}/_search` — used by Postman and by the MCP tool flow
+- **elk-anomaly-results-http-flow**: Implements `POST /_ml/anomaly_detectors/{job_id}/_results` — used by Postman and by the MCP tool flow
 
-### Tool Proxy Flows
-- **tool-search-logs-flow**: Proxy endpoint at `POST /tools/searchLogs`
-- **tool-anomaly-results-flow**: Proxy endpoint at `POST /tools/getAnomalyResults`
-
-### Reusable Sub-flows
-- **elk-search-logs-logic-flow**: Shared business logic for search operations
-- **elk-anomaly-results-logic-flow**: Shared business logic for anomaly detection
+### MCP Tool Flows (agent integration)
+- **tool-search-logs-flow**: MCP connector tool-listener for `searchLogs`; transforms tool args and flow-refs `elk-search-logs-http-flow`
+- **tool-anomaly-results-flow**: MCP connector tool-listener for `getAnomalyResults`; transforms tool args and flow-refs `elk-anomaly-results-http-flow`
 
 ## API Endpoints
 
 ### Search Logs
-- **URL**: `POST http://localhost:8081/{index}/_search`
-- **Tool URL**: `POST http://localhost:8081/tools/searchLogs`
+- **OpenAPI URL**: `POST http://localhost:8081/{index}/_search`
+- **MCP Tool**: `searchLogs` (for agent integration)
 - **Description**: Search documents in Elasticsearch index
 - **Default Index**: `my-index`
 
 ### Anomaly Detection Results
-- **URL**: `POST http://localhost:8081/_ml/anomaly_detectors/{job_id}/_results`
-- **Tool URL**: `POST http://localhost:8081/tools/getAnomalyResults`
+- **OpenAPI URL**: `POST http://localhost:8081/_ml/anomaly_detectors/{job_id}/_results`
+- **MCP Tool**: `getAnomalyResults` (for agent integration)
 - **Description**: Get ML anomaly detection results
 
 ## Configuration
@@ -61,7 +57,7 @@ elasticsearch.default.index=my-index
 
 3. **Test endpoints**:
    - Search endpoint: `curl -X POST http://localhost:8081/my-index/_search -H "Content-Type: application/json" -d '{"query":{"match_all":{}}}'`
-   - Tool endpoint: `curl -X POST http://localhost:8081/tools/searchLogs -H "Content-Type: application/json" -d '{"index":"my-index","query":{"match_all":{}}}'`
+   - Anomaly endpoint: `curl -X POST http://localhost:8081/_ml/anomaly_detectors/my-job/_results -H "Content-Type: application/json" -d '{"sort":"record_score","desc":true}'`
 
 ## API Testing with Postman
 
@@ -79,11 +75,11 @@ A comprehensive Postman collection is included for testing all API endpoints:
 4. Run the "Health Check Examples" to verify connectivity
 
 ### Collection Features
-- **4 main endpoints** with sample requests
-- **OpenAPI and Tool formats** for each operation
+- **Elk HTTP (OpenAPI) endpoints** only: search and anomaly results
 - **Built-in test validation** and error handling
 - **Environment variables** for easy configuration
 - **Comprehensive documentation** for each request
+- Agent access to the same backend is via MCP tools (`searchLogs`, `getAnomalyResults`)
 
 See `POSTMAN_COLLECTION_USAGE.md` for complete testing instructions and examples.
 

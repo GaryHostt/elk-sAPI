@@ -2,9 +2,11 @@
 <mule xmlns="http://www.mulesoft.org/schema/mule/core"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:mcp="http://www.mulesoft.org/schema/mule/mcp"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
-                          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+                          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+                          http://www.mulesoft.org/schema/mule/mcp http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd">
 
     <!-- Configuration Properties -->
     <configuration-properties file="config.properties" doc:name="Configuration properties"/>
@@ -18,5 +20,10 @@
     <http:request-config name="HTTP_Request_config" doc:name="HTTP Request config">
         <http:request-connection/>
     </http:request-config>
+
+    <!-- MCP Server Configuration (exposes tools for agent integration) -->
+    <mcp:server-config name="MCP_Server" doc:name="MCP Server config" serverName="${mcp.serverName}" serverVersion="${mcp.serverVersion}">
+        <mcp:sse-server-connection listenerConfig="HTTP_Listener_config"/>
+    </mcp:server-config>
 
 </mule>

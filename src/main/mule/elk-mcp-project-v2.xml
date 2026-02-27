@@ -3,10 +3,12 @@
       xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
       xmlns:http="http://www.mulesoft.org/schema/mule/http"
       xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:mcp="http://www.mulesoft.org/schema/mule/mcp"
       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
       xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
                           http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-                          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+                          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+                          http://www.mulesoft.org/schema/mule/mcp http://www.mulesoft.org/schema/mule/mcp/current/mule-mcp.xsd">
 
     <!-- Flow 1: HTTP Flow for Search Logs Operation (implements OpenAPI endpoint) -->
     <flow name="elk-search-logs-http-flow" doc:id="elk-search-logs-http-flow">
@@ -160,16 +162,17 @@ output application/json
         </error-handler>
     </flow>
 
-    <!-- Flow 3: Tool Flow for Search Logs (HTTP listener that references Flow 1) -->
+    <!-- Flow 3: Tool Flow for Search Logs (MCP tool-listener; flow-refs elk flow for agent integration) -->
     <flow name="tool-search-logs-flow" doc:id="tool-search-logs-flow">
-        <http:listener doc:name="POST /tools/searchLogs" doc:id="tool-search-logs-listener" 
-                       config-ref="HTTP_Listener_config" 
-                       path="/tools/searchLogs" 
-                       allowedMethods="POST"/>
-        
+        <mcp:tool-listener doc:name="searchLogs" doc:id="search-logs-tool-listener" config-ref="MCP_Server" name="searchLogs">
+            <mcp:description>Search Elasticsearch indices for logs using query DSL. Use when the user wants to search or query log data.</mcp:description>
+            <mcp:parameters-schema><![CDATA[{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"index":{"type":"string","description":"Elasticsearch index name (default: my-index)"},"query":{"type":"object","description":"Elasticsearch query DSL"}},"required":["query"]}]]></mcp:parameters-schema>
+            <mcp:responses>
+                <mcp:text-tool-response-content text="#[payload]"/>
+            </mcp:responses>
+        </mcp:tool-listener>
         <logger level="INFO" doc:name="Log Tool Request" doc:id="log-tool-search-request" 
                 message="Tool searchLogs called with parameters: #[payload]"/>
-        
         <ee:transform doc:name="Transform Tool to HTTP" doc:id="transform-tool-to-http-search">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -181,8 +184,6 @@ payload.query]]></ee:set-payload>
                 <ee:set-variable variableName="indexName">#[payload.index default "my-index"]</ee:set-variable>
             </ee:variables>
         </ee:transform>
-        
-        <!-- Set attributes to simulate HTTP request to the main flow -->
         <ee:transform doc:name="Set Attributes" doc:id="set-attributes-search">
             <ee:message>
                 <ee:set-attributes><![CDATA[%dw 2.0
@@ -199,23 +200,30 @@ output application/java
 }]]></ee:set-attributes>
             </ee:message>
         </ee:transform>
-        
         <flow-ref doc:name="Call Search Logs HTTP Flow" doc:id="call-search-logs-http-flow" name="elk-search-logs-http-flow"/>
-        
+        <ee:transform doc:name="Tool Response as Text" doc:id="tool-search-response-text">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
         <logger level="INFO" doc:name="Log Tool Response" doc:id="log-tool-search-response" 
                 message="Tool searchLogs response: #[payload]"/>
     </flow>
 
-    <!-- Flow 4: Tool Flow for Anomaly Results (HTTP listener that references Flow 2) -->
+    <!-- Flow 4: Tool Flow for Anomaly Results (MCP tool-listener; flow-refs elk flow for agent integration) -->
     <flow name="tool-anomaly-results-flow" doc:id="tool-anomaly-results-flow">
-        <http:listener doc:name="POST /tools/getAnomalyResults" doc:id="tool-anomaly-results-listener" 
-                       config-ref="HTTP_Listener_config" 
-                       path="/tools/getAnomalyResults" 
-                       allowedMethods="POST"/>
-        
+        <mcp:tool-listener doc:name="getAnomalyResults" doc:id="anomaly-results-tool-listener" config-ref="MCP_Server" name="getAnomalyResults">
+            <mcp:description>Get anomaly detection results for an Elasticsearch ML job. Use when the user wants to retrieve ML anomaly results for a job_id.</mcp:description>
+            <mcp:parameters-schema><![CDATA[{"$schema":"http://json-schema.org/draft-07/schema#","type":"object","properties":{"job_id":{"type":"string","description":"ML anomaly detection job ID"},"sort":{"type":"string","description":"Field to sort results by"},"desc":{"type":"boolean","description":"Sort descending"},"start":{"type":"string","format":"date-time","description":"Start time for results"},"end":{"type":"string","format":"date-time","description":"End time for results"},"anomaly_score_filter":{"type":"object","description":"Filter for anomaly scores"}},"required":["job_id"]}]]></mcp:parameters-schema>
+            <mcp:responses>
+                <mcp:text-tool-response-content text="#[payload]"/>
+            </mcp:responses>
+        </mcp:tool-listener>
         <logger level="INFO" doc:name="Log Tool Request" doc:id="log-tool-anomaly-request" 
                 message="Tool getAnomalyResults called with parameters: #[payload]"/>
-        
         <ee:transform doc:name="Transform Tool to HTTP" doc:id="transform-tool-to-http-anomaly">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -233,8 +241,6 @@ output application/json
                 <ee:set-variable variableName="jobId">#[payload.job_id]</ee:set-variable>
             </ee:variables>
         </ee:transform>
-        
-        <!-- Set attributes to simulate HTTP request to the main flow -->
         <ee:transform doc:name="Set Attributes" doc:id="set-attributes-anomaly">
             <ee:message>
                 <ee:set-attributes><![CDATA[%dw 2.0
@@ -251,9 +257,15 @@ output application/java
 }]]></ee:set-attributes>
             </ee:message>
         </ee:transform>
-        
         <flow-ref doc:name="Call Anomaly Results HTTP Flow" doc:id="call-anomaly-results-http-flow" name="elk-anomaly-results-http-flow"/>
-        
+        <ee:transform doc:name="Tool Response as Text" doc:id="tool-anomaly-response-text">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
         <logger level="INFO" doc:name="Log Tool Response" doc:id="log-tool-anomaly-response" 
                 message="Tool getAnomalyResults response: #[payload]"/>
     </flow>

@@ -37,28 +37,25 @@ curl -X GET "localhost:9200/_cluster/health?pretty"
 
 ## Collection Structure
 
+The collection tests only the **elk HTTP API** (OpenAPI-style endpoints). It does not call any `/tools/*` endpoints; agent access to the same backend is via MCP tools (`searchLogs`, `getAnomalyResults`) that invoke these flows internally.
+
 The collection is organized into three main folders:
 
 ### 📁 Search Operations
-- **Search Logs (OpenAPI)**: Standard Elasticsearch API endpoint
-- **Search Logs (Tool)**: Simplified tool interface
+- **Search Logs (OpenAPI)**: `POST /{index}/_search` — Elasticsearch search API
 
 ### 📁 Anomaly Detection  
-- **Get Anomaly Results (OpenAPI)**: Standard ML API endpoint
-- **Get Anomaly Results (Tool)**: Simplified tool interface
+- **Get Anomaly Results (OpenAPI)**: `POST /_ml/anomaly_detectors/{job_id}/_results` — ML anomaly results API
 
 ### 📁 Health Check Examples
-- **Basic Search Test**: Simple connectivity test
-- **Tool Search Test**: Tool endpoint connectivity test
+- **Basic Search Test**: Simple connectivity test for the search endpoint
 
 ## API Endpoints Overview
 
 | Endpoint | Method | Purpose | Format |
 |----------|--------|---------|---------|
-| `/{index}/_search` | POST | OpenAPI search | Elasticsearch DSL |
-| `/tools/searchLogs` | POST | Tool search | Simplified JSON |
-| `/_ml/anomaly_detectors/{job_id}/_results` | POST | OpenAPI anomaly | Elasticsearch ML |
-| `/tools/getAnomalyResults` | POST | Tool anomaly | Simplified JSON |
+| `/{index}/_search` | POST | Elk search flow | Elasticsearch DSL |
+| `/_ml/anomaly_detectors/{job_id}/_results` | POST | Elk anomaly results flow | Elasticsearch ML |
 
 ## Environment Variables
 
@@ -130,33 +127,7 @@ The collection uses these environment variables:
 }
 ```
 
-### 3. Tool Search (Simplified Format)
-
-**Endpoint**: `POST /tools/searchLogs`
-
-**Request Body**:
-```json
-{
-  "index": "application-logs",
-  "query": {
-    "query": {
-      "match": {
-        "service": "user-service"
-      }
-    },
-    "size": 20,
-    "sort": [
-      {
-        "@timestamp": {
-          "order": "desc"
-        }
-      }
-    ]
-  }
-}
-```
-
-### 4. Anomaly Detection (OpenAPI Format)
+### 3. Anomaly Detection (OpenAPI Format)
 
 **Endpoint**: `POST /_ml/anomaly_detectors/{{job_id}}/_results`
 
@@ -173,31 +144,12 @@ The collection uses these environment variables:
 }
 ```
 
-### 5. Anomaly Detection (Tool Format)
-
-**Endpoint**: `POST /tools/getAnomalyResults`
-
-**Request Body**:
-```json
-{
-  "job_id": "cpu-usage-anomaly-job",
-  "sort": "timestamp",
-  "desc": true,
-  "start": "2024-01-01T00:00:00Z",
-  "end": "2024-12-31T23:59:59Z",
-  "anomaly_score_filter": {
-    "gte": 50
-  }
-}
-```
-
 ## Testing Workflow
 
 ### Basic Connectivity Test
 
 1. **Start with Health Check Examples**:
-   - Run "Basic Search Test" to verify the OpenAPI endpoint
-   - Run "Tool Search Test" to verify the tool endpoint
+   - Run "Basic Search Test" to verify the elk search endpoint
 
 2. **Check Response Status**:
    - 200: Success

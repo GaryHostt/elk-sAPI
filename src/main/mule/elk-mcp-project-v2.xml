@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mule xmlns="http://www.mulesoft.org/schema/mule/core" 
+      xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+      xmlns:http="http://www.mulesoft.org/schema/mule/http"
+      xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+      xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+                          http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+                          http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+    <!-- Flow 1: HTTP Flow for Search Logs Operation (implements OpenAPI endpoint) -->
+    <flow name="elk-search-logs-http-flow" doc:id="elk-search-logs-http-flow">
+        <http:listener doc:name="POST /{index}/_search" doc:id="search-logs-listener" 
+                       config-ref="HTTP_Listener_config" 
+                       path="/{index}/_search" 
+                       allowedMethods="POST"/>
+        
+        <logger level="INFO" doc:name="Log Request" doc:id="log-search-request" 
+                message="Received search request for index: #[attributes.uriParams.index], payload: #[payload]"/>
+        
+        <ee:transform doc:name="Prepare Elasticsearch Request" doc:id="prepare-search-request">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    url: "http://localhost:9200/" ++ (attributes.uriParams.index default "my-index") ++ "/_search",
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: payload
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        
+        <http:request method="POST" doc:name="Call Elasticsearch" doc:id="call-elasticsearch-search"
+                      config-ref="HTTP_Request_config"
+                      url="#[payload.url]">
+            <http:body><![CDATA[#[payload.body]]]></http:body>
+            <http:headers><![CDATA[#[payload.headers]]]></http:headers>
+        </http:request>
+        
+        <logger level="INFO" doc:name="Log Response" doc:id="log-search-response" 
+                message="Elasticsearch response: #[payload]"/>
+        
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="search-error-handler" type="HTTP:BAD_REQUEST, HTTP:NOT_FOUND, HTTP:UNAUTHORIZED">
+                <ee:transform doc:name="4xx Error Response" doc:id="transform-4xx-error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    error: {
+        "type": "client_error",
+        reason: "Bad request to Elasticsearch"
+    }
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="search-server-error-handler">
+                <ee:transform doc:name="5xx Error Response" doc:id="transform-5xx-error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    error: {
+        "type": "server_error",
+        reason: "Elasticsearch server error"
+    }
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">500</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- Flow 2: HTTP Flow for Anomaly Detection Results Operation (implements OpenAPI endpoint) -->
+    <flow name="elk-anomaly-results-http-flow" doc:id="elk-anomaly-results-http-flow">
+        <http:listener doc:name="POST /_ml/anomaly_detectors/{job_id}/_results" doc:id="anomaly-results-listener" 
+                       config-ref="HTTP_Listener_config" 
+                       path="/_ml/anomaly_detectors/{job_id}/_results" 
+                       allowedMethods="POST"/>
+        
+        <logger level="INFO" doc:name="Log Request" doc:id="log-anomaly-request" 
+                message="Received anomaly detection request for job: #[attributes.uriParams.job_id], payload: #[payload]"/>
+        
+        <ee:transform doc:name="Prepare ML Request" doc:id="prepare-ml-request">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    url: "http://localhost:9200/_ml/anomaly_detectors/" ++ attributes.uriParams.job_id ++ "/_results",
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json"
+    },
+    body: payload
+}]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+        
+        <http:request method="POST" doc:name="Call Elasticsearch ML" doc:id="call-elasticsearch-ml"
+                      config-ref="HTTP_Request_config"
+                      url="#[payload.url]">
+            <http:body><![CDATA[#[payload.body]]]></http:body>
+            <http:headers><![CDATA[#[payload.headers]]]></http:headers>
+        </http:request>
+        
+        <logger level="INFO" doc:name="Log Response" doc:id="log-anomaly-response" 
+                message="Elasticsearch ML response: #[payload]"/>
+        
+        <error-handler>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="anomaly-error-handler" type="HTTP:BAD_REQUEST, HTTP:NOT_FOUND, HTTP:UNAUTHORIZED">
+                <ee:transform doc:name="4xx Error Response" doc:id="transform-anomaly-4xx-error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    error: {
+        "type": "client_error", 
+        reason: "ML job not found or unauthorized"
+    }
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">400</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+            <on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="anomaly-server-error-handler">
+                <ee:transform doc:name="5xx Error Response" doc:id="transform-anomaly-5xx-error">
+                    <ee:message>
+                        <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    error: {
+        "type": "server_error",
+        reason: "ML service not available"
+    }
+}]]></ee:set-payload>
+                    </ee:message>
+                    <ee:variables>
+                        <ee:set-variable variableName="httpStatus">500</ee:set-variable>
+                    </ee:variables>
+                </ee:transform>
+            </on-error-propagate>
+        </error-handler>
+    </flow>
+
+    <!-- Flow 3: Tool Flow for Search Logs (HTTP listener that references Flow 1) -->
+    <flow name="tool-search-logs-flow" doc:id="tool-search-logs-flow">
+        <http:listener doc:name="POST /tools/searchLogs" doc:id="tool-search-logs-listener" 
+                       config-ref="HTTP_Listener_config" 
+                       path="/tools/searchLogs" 
+                       allowedMethods="POST"/>
+        
+        <logger level="INFO" doc:name="Log Tool Request" doc:id="log-tool-search-request" 
+                message="Tool searchLogs called with parameters: #[payload]"/>
+        
+        <ee:transform doc:name="Transform Tool to HTTP" doc:id="transform-tool-to-http-search">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload.query]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="indexName">#[payload.index default "my-index"]</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        
+        <!-- Set attributes to simulate HTTP request to the main flow -->
+        <ee:transform doc:name="Set Attributes" doc:id="set-attributes-search">
+            <ee:message>
+                <ee:set-attributes><![CDATA[%dw 2.0
+output application/java
+---
+{
+    uriParams: {
+        index: vars.indexName
+    },
+    headers: {
+        "content-type": "application/json"
+    },
+    method: "POST"
+}]]></ee:set-attributes>
+            </ee:message>
+        </ee:transform>
+        
+        <flow-ref doc:name="Call Search Logs HTTP Flow" doc:id="call-search-logs-http-flow" name="elk-search-logs-http-flow"/>
+        
+        <logger level="INFO" doc:name="Log Tool Response" doc:id="log-tool-search-response" 
+                message="Tool searchLogs response: #[payload]"/>
+    </flow>
+
+    <!-- Flow 4: Tool Flow for Anomaly Results (HTTP listener that references Flow 2) -->
+    <flow name="tool-anomaly-results-flow" doc:id="tool-anomaly-results-flow">
+        <http:listener doc:name="POST /tools/getAnomalyResults" doc:id="tool-anomaly-results-listener" 
+                       config-ref="HTTP_Listener_config" 
+                       path="/tools/getAnomalyResults" 
+                       allowedMethods="POST"/>
+        
+        <logger level="INFO" doc:name="Log Tool Request" doc:id="log-tool-anomaly-request" 
+                message="Tool getAnomalyResults called with parameters: #[payload]"/>
+        
+        <ee:transform doc:name="Transform Tool to HTTP" doc:id="transform-tool-to-http-anomaly">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+{
+    sort: payload.sort,
+    desc: payload.desc,
+    start: payload.start,
+    end: payload."end",
+    anomaly_score_filter: payload.anomaly_score_filter
+}]]></ee:set-payload>
+            </ee:message>
+            <ee:variables>
+                <ee:set-variable variableName="jobId">#[payload.job_id]</ee:set-variable>
+            </ee:variables>
+        </ee:transform>
+        
+        <!-- Set attributes to simulate HTTP request to the main flow -->
+        <ee:transform doc:name="Set Attributes" doc:id="set-attributes-anomaly">
+            <ee:message>
+                <ee:set-attributes><![CDATA[%dw 2.0
+output application/java
+---
+{
+    uriParams: {
+        job_id: vars.jobId
+    },
+    headers: {
+        "content-type": "application/json"
+    },
+    method: "POST"
+}]]></ee:set-attributes>
+            </ee:message>
+        </ee:transform>
+        
+        <flow-ref doc:name="Call Anomaly Results HTTP Flow" doc:id="call-anomaly-results-http-flow" name="elk-anomaly-results-http-flow"/>
+        
+        <logger level="INFO" doc:name="Log Tool Response" doc:id="log-tool-anomaly-response" 
+                message="Tool getAnomalyResults response: #[payload]"/>
+    </flow>
+
+</mule>

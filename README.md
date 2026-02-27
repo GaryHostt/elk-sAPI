@@ -85,7 +85,7 @@ See `POSTMAN_COLLECTION_USAGE.md` for complete testing instructions and examples
 
 ## Prerequisites
 
-- Java 8 or later
+- Java 17
 - Maven 3.6+
 - Elasticsearch running on localhost:9200
 - Mule Runtime 4.7.0+
